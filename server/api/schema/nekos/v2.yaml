@@ -1,0 +1,199 @@
+openapi: 3.1.0
+
+info:
+  title: nekos.best
+  description: Specification for the nekos.best API
+  version: 2.0.0
+  contact:
+    url: https://nekos.best
+
+servers:
+  - url: https://nekos.best/api/v2
+
+paths:
+  /endpoints:
+    get:
+      summary: Lists all available categories.
+      operationId: getCategories
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  required:
+                    - format
+                  properties:
+                    format:
+                      type: string
+  /search:
+    get:
+      description: |
+        The query parameter can be used to search for a specific phrase in the image or GIF source.
+        Use the type query to get `1` images or `2` GIFs results.
+
+        * Optional parameters: Use the category query for getting images or GIFs from a specific endpoint.
+        The amount query may be used to retrieve multiple results at once.
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: type
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 2
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: amount
+          schema:
+            type: integer
+      operationId: search
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - results
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Result"
+        '400':
+          description: Category not found or invalid type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /{category}:
+    get:
+      summary: Gets a random image or GIF from the available categories along with its metadata.
+      description: The amount query may be used to retrieve multiple assets at once. The amount is a number such that 1 ≤ X ≤ 20.
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: amount
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+      operationId: getCategoryFiles
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - results
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Result"
+        '404':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /{category}/{filename}.{format}:
+    get:
+      summary: Gets a specific image from our categories.
+      description: |
+        Replace {filename} with the asset's filename and {format} with the category's format.
+        
+        Note: The asset's metadata are provided URL-encoded, in the response's headers under `anime_name`, `artist_name`, `artist_href` and `source_url`.
+      parameters:
+        - in: path
+          name: category
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: filename
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: format
+          required: true
+          schema:
+            type: string
+      operationId: getCategoryFile
+      responses:
+        '200':
+          description: Successful response
+          headers:
+            artist_href:
+              schema:
+                type: string
+            artist_name:
+              schema:
+                type: string
+            source_url:
+              schema:
+                type: string
+            anime_name:
+              schema:
+                type: string
+            url:
+              schema:
+                type: string
+          content:
+            schema:
+              type: string
+              format: binary
+        '404':
+          description: Category, file or format not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+    Result:
+      type: object
+      required:
+        - url
+      properties:
+        artist_href:
+          type: string
+        artist_name:
+          type: string
+        source_url:
+          type: string
+        anime_name:
+          type: string
+        url:
+          type: string

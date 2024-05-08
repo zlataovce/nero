@@ -1,0 +1,148 @@
+openapi: 3.1.0
+
+info:
+  title: nero
+  description: Specification for the nero API
+  version: 1.0.0
+  contact:
+    url: https://github.com/cephxdev/nero
+    email: mk@kcra.me
+
+servers:
+  - url: /api/v1
+
+paths:
+  /repos/{repo}:
+    post:
+      parameters:
+        - in: path
+          name: repo
+          required: true
+          schema:
+            type: string
+      operationId: postRepo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProtoMedia"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Media"
+        '400':
+          description: Unknown repository or bad data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    ErrorType:
+      type: string
+      enum:
+        - not_found
+        - internal_error
+        - bad_request
+    Error:
+      type: object
+      required:
+        - type
+        - description
+      properties:
+        type:
+          $ref: '#/components/schemas/ErrorType'
+        description:
+          type: string
+          description: The error description.
+    MetadataType:
+      type: string
+      enum:
+        - generic
+        - anime
+    Metadata:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: "#/components/schemas/MetadataType"
+    GenericMetadata:
+      allOf:
+        - $ref: "#/components/schemas/Metadata"
+        - type: object
+          required:
+            - source
+            - artist
+            - artist_link
+          properties:
+            source:
+              type: string
+              nullable: true
+            artist:
+              type: string
+              nullable: true
+            artist_link:
+              type: string
+              nullable: true
+    AnimeMetadata:
+      allOf:
+        - $ref: "#/components/schemas/Metadata"
+        - type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+              nullable: true
+    MediaFormat:
+      type: string
+      enum:
+        - unknown
+        - image
+        - animated_image
+    Media:
+      type: object
+      required:
+        - id
+        - format
+        - meta
+      properties:
+        id:
+          type: string
+          format: uuid
+        format:
+          $ref: "#/components/schemas/MediaFormat"
+        meta:
+          oneOf:
+            - $ref: "#/components/schemas/GenericMetadata"
+            - $ref: "#/components/schemas/AnimeMetadata"
+          discriminator:
+            propertyName: type
+            mapping:
+              generic: "#/components/schemas/GenericMetadata"
+              anime: "#/components/schemas/AnimeMetadata"
+          nullable: true
+          description: The media metadata.
+    ProtoMedia:
+      type: object
+      required:
+        - meta
+        - data
+      properties:
+        meta:
+          oneOf:
+            - $ref: "#/components/schemas/GenericMetadata"
+            - $ref: "#/components/schemas/AnimeMetadata"
+          discriminator:
+            propertyName: type
+            mapping:
+              generic: "#/components/schemas/GenericMetadata"
+              anime: "#/components/schemas/AnimeMetadata"
+          nullable: true
+        data:
+          type: string

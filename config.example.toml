@@ -1,0 +1,8 @@
+[http.nero]
+host = ":8000"
+
+[http.nekos]
+host = ":8001"
+
+[repos.hug]
+path = "./hug"
