@@ -7,21 +7,31 @@ import (
 	"github.com/google/uuid"
 )
 
+// Format is a media format.
 type Format uint
 
 const (
+	// FormatUnknown is an unknown media format.
 	FormatUnknown Format = iota
+	// FormatImage is a standard image media format, i.e. JPEG, PNG.
 	FormatImage
+	// FormatAnimatedImage is an animated image media format, i.e. GIF, APNG, WEBP.
 	FormatAnimatedImage
 )
 
+// Media is a piece of media.
 type Media struct {
-	ID     uuid.UUID     `json:"id"`
-	Format Format        `json:"format"`
-	Path   string        `json:"path"`
-	Meta   meta.Metadata `json:"meta"`
+	// ID is the media ID.
+	ID uuid.UUID `json:"id"`
+	// Format is the media format.
+	Format Format `json:"format"`
+	// Path is the media path.
+	Path string `json:"path"`
+	// Meta is the media metadata, may be nil.
+	Meta meta.Metadata `json:"meta"`
 }
 
+// UnmarshalJSON reads data from a JSON representation.
 func (m *Media) UnmarshalJSON(bytes []byte) error {
 	var raw struct {
 		ID     uuid.UUID       `json:"id"`

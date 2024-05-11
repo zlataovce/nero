@@ -6,7 +6,7 @@ import (
 	"github.com/cephxdev/nero/internal/errors"
 	"github.com/cephxdev/nero/repo/media"
 	"github.com/cephxdev/nero/repo/media/meta"
-	"github.com/gabriel-vasile/mimetype"
+	mime "github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
@@ -17,6 +17,7 @@ import (
 	"sync"
 )
 
+// Repository is a media repository.
 type Repository struct {
 	id, path, lockPath string
 	logger             *zap.Logger
@@ -25,6 +26,7 @@ type Repository struct {
 	mu    sync.RWMutex
 }
 
+// NewMemory creates a Repository without a backing lock file and storage directory.
 func NewMemory(id string, logger *zap.Logger) *Repository {
 	return &Repository{
 		id:     id,
@@ -32,6 +34,8 @@ func NewMemory(id string, logger *zap.Logger) *Repository {
 	}
 }
 
+// NewFile creates a Repository persisted to a lock file.
+// If lockPath exists, its content is loaded into the repository.
 func NewFile(id, path, lockPath string, logger *zap.Logger) (*Repository, error) {
 	var err error
 
@@ -116,18 +120,29 @@ func NewFile(id, path, lockPath string, logger *zap.Logger) (*Repository, error)
 	}, err
 }
 
+// ID returns the ID of the repository.
 func (r *Repository) ID() string {
 	return r.id
 }
 
+// Path returns the storage directory path of the repository.
+// Returns an empty string if it is an in-memory repository (Memory).
 func (r *Repository) Path() string {
 	return r.path
 }
 
+// LockPath returns the lock file path of the repository.
+// Returns an empty string if it is an in-memory repository (Memory).
 func (r *Repository) LockPath() string {
 	return r.lockPath
 }
 
+// Memory returns whether this repository is only in memory (without a backing lock file).
+func (r *Repository) Memory() bool {
+	return r.lockPath == ""
+}
+
+// Get tries to find media by its ID, returns nil if nothing was found.
 func (r *Repository) Get(id uuid.UUID) *media.Media {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -138,6 +153,8 @@ func (r *Repository) Get(id uuid.UUID) *media.Media {
 	return r.items[id]
 }
 
+// Find tries to find media by a metadata query (meta.Matchable) and a format, returns nil if nothing was found.
+// Supplying media.FormatUnknown means any format should be accepted.
 func (r *Repository) Find(query string, format media.Format, amount int) []*media.Media {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -171,6 +188,7 @@ func (r *Repository) Find(query string, format media.Format, amount int) []*medi
 	return res
 }
 
+// Random picks N random media out of the repository.
 func (r *Repository) Random(n int) []*media.Media {
 	if n <= 0 {
 		return nil
@@ -187,6 +205,8 @@ func (r *Repository) Random(n int) []*media.Media {
 	return v
 }
 
+// Create creates and inserts new media into the repository.
+// Returns errors.ErrUnsupported for repositories without a backing storage directory.
 func (r *Repository) Create(b []byte, m meta.Metadata) (*media.Media, error) {
 	if r.path == "" {
 		return nil, errors.ErrUnsupported
@@ -195,9 +215,9 @@ func (r *Repository) Create(b []byte, m meta.Metadata) (*media.Media, error) {
 	var (
 		err error
 
-		id   = uuid.New()
-		mime = mimetype.Detect(b)
-		path = filepath.Join(r.path, id.String()+mime.Extension())
+		id    = uuid.New()
+		type_ = mime.Detect(b)
+		path  = filepath.Join(r.path, id.String()+type_.Extension())
 	)
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0)
 	if err != nil {
@@ -219,7 +239,7 @@ func (r *Repository) Create(b []byte, m meta.Metadata) (*media.Media, error) {
 		Path:   path,
 		Meta:   m,
 	}
-	switch mime.String() {
+	switch type_.String() {
 	case "image/jpeg", "image/png":
 		m0.Format = media.FormatImage
 	case "image/vnd.mozilla.apng", "image/gif", "image/webp":
@@ -230,6 +250,7 @@ func (r *Repository) Create(b []byte, m meta.Metadata) (*media.Media, error) {
 	return m0, err
 }
 
+// Add inserts new media into the repository.
 func (r *Repository) Add(m *media.Media) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -247,6 +268,7 @@ func (r *Repository) Add(m *media.Media) error {
 	return r.save()
 }
 
+// Remove removes media from the repository by its ID.
 func (r *Repository) Remove(id uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -255,6 +277,7 @@ func (r *Repository) Remove(id uuid.UUID) error {
 	return r.save()
 }
 
+// Items returns all pieces of media in the repository.
 func (r *Repository) Items() []*media.Media {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -262,6 +285,8 @@ func (r *Repository) Items() []*media.Media {
 	return maps.Values(r.items)
 }
 
+// Close cleans up after the repository.
+// The repository should not be used anymore after calling Close.
 func (r *Repository) Close() error {
 	return nil
 }
