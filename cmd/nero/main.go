@@ -51,7 +51,7 @@ func main() {
 					&cli.StringFlag{
 						Name:     "path",
 						Aliases:  []string{"f"},
-						Usage:    "the uploaded file path",
+						Usage:    "the uploaded file path or remote url",
 						Required: true,
 					},
 				},

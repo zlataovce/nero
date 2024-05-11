@@ -140,10 +140,7 @@ func (fr *filesRes) VisitSearchResponse(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	u := &(*r.URL) // clean URL
-	u.Fragment = ""
-	u.RawQuery = ""
-
+	u := cleanRequestUrl(r)
 	return json.NewEncoder(w).Encode(v2.Search200JSONResponse{Results: wrapResults(u, fr.items)})
 }
 
@@ -151,10 +148,7 @@ func (fr *filesRes) VisitGetCategoryFilesResponse(w http.ResponseWriter, r *http
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	u := &(*r.URL) // clean URL
-	u.Fragment = ""
-	u.RawQuery = ""
-
+	u := cleanRequestUrl(r)
 	return json.NewEncoder(w).Encode(v2.GetCategoryFiles200JSONResponse{Results: wrapResults(u, fr.items)})
 }
 
@@ -180,4 +174,21 @@ func wrapResult(base *url.URL, m *media.Media) v2.Result {
 	}
 
 	return res
+}
+
+func cleanRequestUrl(r *http.Request) *url.URL {
+	u := &(*r.URL) // copy URL
+	u.Fragment = ""
+	u.RawQuery = ""
+
+	if !u.IsAbs() { // try to make url absolute
+		u.Host = r.Host
+		u.Scheme = "http"
+
+		if r.TLS != nil {
+			u.Scheme = "https"
+		}
+	}
+
+	return u
 }

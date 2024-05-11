@@ -2,15 +2,17 @@ package main
 
 import (
 	"encoding/base64"
+	"fmt"
 	"github.com/cephxdev/nero/internal/errors"
 	"github.com/cephxdev/nero/server/api"
 	"github.com/cephxdev/nero/server/api/v1"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // handleUploadGeneric handles the upload generic sub-command.
@@ -35,25 +37,42 @@ func (ac *appContext) handleUploadAnime(cCtx *cli.Context) error {
 	return ac.handleUpload(cCtx, m)
 }
 
-func (ac *appContext) handleUpload(cCtx *cli.Context, m *v1.ProtoMedia_Meta) (err error) {
+func (ac *appContext) handleUpload(cCtx *cli.Context, m *v1.ProtoMedia_Meta) error {
 	c, err := v1.NewClientWithResponses(cCtx.String("url"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create client")
 	}
 
-	f, err := os.Open(filepath.Clean(cCtx.String("path")))
-	if err != nil {
-		return errors.Wrap(err, "failed to open file")
-	}
-	defer func() {
-		if err0 := f.Close(); err0 != nil {
-			err = multierr.Append(err, errors.Wrap(err0, "failed to close file"))
-		}
-	}()
+	var (
+		path = cCtx.String("path")
+		data io.ReadCloser
+	)
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		ac.logger.Info("treating path as remote url", zap.String("path", path))
 
-	b, err := io.ReadAll(f)
+		res, err := http.Get(path)
+		if err != nil {
+			return errors.Wrap(err, "failed to get remote url")
+		}
+
+		if res.StatusCode > 399 {
+			return fmt.Errorf("remote url request returned error status code %d", res.StatusCode)
+		}
+
+		data = res.Body
+	} else {
+		if data, err = os.Open(filepath.Clean(path)); err != nil {
+			return errors.Wrap(err, "failed to open file")
+		}
+	}
+
+	b, err := io.ReadAll(data)
 	if err != nil {
 		return errors.Wrap(err, "failed to read file")
+	}
+
+	if err = data.Close(); err != nil {
+		return errors.Wrap(err, "failed to close data stream")
 	}
 
 	res, err := c.PostRepoWithResponse(cCtx.Context, cCtx.String("repo"), v1.ProtoMedia{
@@ -64,6 +83,19 @@ func (ac *appContext) handleUpload(cCtx *cli.Context, m *v1.ProtoMedia_Meta) (er
 		return errors.Wrap(err, "failed to send request")
 	}
 
+	code := res.StatusCode()
+	if code > 399 {
+		ac.logger.Error(
+			"request completed with errors",
+			zap.String("status", res.Status()),
+			zap.Int("code", code),
+			zap.ByteString("body", res.Body),
+		)
+
+		// error out to force an error exit code
+		return fmt.Errorf("request completed with error status code %d", code)
+	}
+
 	ac.logger.Info("request completed", zap.ByteString("body", res.Body))
-	return err
+	return nil
 }
