@@ -58,6 +58,8 @@ paths:
           name: amount
           schema:
             type: integer
+            minimum: 1
+            maximum: 20
       operationId: search
       responses:
         '200':

@@ -10,3 +10,7 @@ const (
 type Metadata interface {
 	Type() Type
 }
+
+type Matchable interface {
+	Matches(query string) bool
+}

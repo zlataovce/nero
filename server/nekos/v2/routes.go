@@ -30,9 +30,44 @@ func (s *Server) GetCategories(_ context.Context, _ v2.GetCategoriesRequestObjec
 	return res, nil
 }
 
-func (s *Server) Search(_ context.Context, _ v2.SearchRequestObject) (v2.SearchResponseObject, error) {
-	//TODO implement me
-	panic("implement me")
+func (s *Server) Search(_ context.Context, request v2.SearchRequestObject) (v2.SearchResponseObject, error) {
+	if request.Params.Type < 1 || request.Params.Type > 2 {
+		return v2.Search400JSONResponse(v2.Error{Code: http.StatusBadRequest, Message: "invalid type"}), nil
+	}
+
+	needed := 20
+	if request.Params.Amount != nil {
+		needed = *request.Params.Amount
+	}
+	if needed > 20 { // clamp amount
+		needed = 20
+	}
+
+	var res []*media.Media
+	if request.Params.Category != nil {
+		r, ok := s.repos[*request.Params.Category]
+		if !ok {
+			return v2.Search400JSONResponse(v2.Error{Code: http.StatusBadRequest, Message: "invalid category"}), nil
+		}
+
+		res = r.Find(request.Params.Query, media.Format(request.Params.Type), needed)
+	} else {
+		for _, r := range s.repos {
+			res0 := r.Find(request.Params.Query, media.Format(request.Params.Type), needed)
+			if needed < len(res0) {
+				res0 = res0[:needed]
+			}
+
+			res = append(res, res0...)
+
+			needed -= len(res0)
+			if needed <= 0 {
+				break
+			}
+		}
+	}
+
+	return &filesRes{items: res}, nil
 }
 
 func (s *Server) GetCategoryFiles(_ context.Context, request v2.GetCategoryFilesRequestObject) (v2.GetCategoryFilesResponseObject, error) {
@@ -75,7 +110,7 @@ type fileRes struct {
 	path string
 }
 
-func (fr *fileRes) writeResponse(w http.ResponseWriter, r *http.Request) (err error) {
+func (fr *fileRes) VisitGetCategoryFileResponse(w http.ResponseWriter, r *http.Request) error {
 	f, err := os.Open(fr.path)
 	if err != nil {
 		return errors.Wrap(err, "failed to open media")
@@ -97,28 +132,39 @@ func (fr *fileRes) writeResponse(w http.ResponseWriter, r *http.Request) (err er
 	return err
 }
 
-func (fr *fileRes) VisitGetCategoryFileResponse(w http.ResponseWriter, r *http.Request) error {
-	return fr.writeResponse(w, r)
-}
-
 type filesRes struct {
 	items []*media.Media
+}
+
+func (fr *filesRes) VisitSearchResponse(w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	u := &(*r.URL) // clean URL
+	u.Fragment = ""
+	u.RawQuery = ""
+
+	return json.NewEncoder(w).Encode(v2.Search200JSONResponse{Results: wrapResults(u, fr.items)})
 }
 
 func (fr *filesRes) VisitGetCategoryFilesResponse(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	u := &(*r.URL)
+	u := &(*r.URL) // clean URL
 	u.Fragment = ""
 	u.RawQuery = ""
 
-	res := make([]v2.Result, len(fr.items))
-	for i, m0 := range fr.items {
-		res[i] = wrapResult(u, m0)
+	return json.NewEncoder(w).Encode(v2.GetCategoryFiles200JSONResponse{Results: wrapResults(u, fr.items)})
+}
+
+func wrapResults(base *url.URL, ms []*media.Media) []v2.Result {
+	res := make([]v2.Result, len(ms))
+	for i, m0 := range ms {
+		res[i] = wrapResult(base, m0)
 	}
 
-	return json.NewEncoder(w).Encode(v2.GetCategoryFiles200JSONResponse{Results: res})
+	return res
 }
 
 func wrapResult(base *url.URL, m *media.Media) v2.Result {

@@ -1,6 +1,9 @@
 package meta
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 type AnimeMetadata struct {
 	Name string `json:"name"`
@@ -8,6 +11,10 @@ type AnimeMetadata struct {
 
 func (am *AnimeMetadata) Type() Type {
 	return TypeAnime
+}
+
+func (am *AnimeMetadata) Matches(query string) bool {
+	return strings.Contains(strings.ToLower(am.Name), strings.ToLower(query))
 }
 
 func (am *AnimeMetadata) MarshalJSON() ([]byte, error) {

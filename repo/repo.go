@@ -138,6 +138,39 @@ func (r *Repository) Get(id uuid.UUID) *media.Media {
 	return r.items[id]
 }
 
+func (r *Repository) Find(query string, format media.Format, amount int) []*media.Media {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if r.items == nil {
+		return nil
+	}
+
+	var res []*media.Media
+	for _, m := range r.items {
+		if amount <= 0 {
+			break
+		}
+
+		if format != media.FormatUnknown && m.Format != format { // format mismatch
+			continue
+		}
+
+		if m.Meta == nil { // no meta to match against
+			continue
+		}
+
+		if ma, ok := m.Meta.(meta.Matchable); !ok || !ma.Matches(query) { // meta didn't match
+			continue
+		}
+
+		amount--
+		res = append(res, m)
+	}
+
+	return res
+}
+
 func (r *Repository) Random(n int) []*media.Media {
 	if n <= 0 {
 		return nil
@@ -211,7 +244,7 @@ func (r *Repository) Add(m *media.Media) error {
 	}
 
 	r.items[m.ID] = m
-	return r.saveSingle(m)
+	return r.save()
 }
 
 func (r *Repository) Remove(id uuid.UUID) error {
@@ -238,6 +271,12 @@ func (r *Repository) save() (err error) {
 		return nil
 	}
 
+	if _, err := os.Stat(r.lockPath); err == nil {
+		if err = os.Rename(r.lockPath, r.lockPath+".old"); err != nil {
+			return errors.Wrap(err, "failed to move index file")
+		}
+	}
+
 	f, err := os.OpenFile(r.lockPath, os.O_WRONLY|os.O_CREATE, 0)
 	if err != nil {
 		return errors.Wrap(err, "failed to open index file")
@@ -254,25 +293,6 @@ func (r *Repository) save() (err error) {
 		}
 	}
 
-	return err
-}
-
-func (r *Repository) saveSingle(m *media.Media) (err error) {
-	if r.lockPath == "" {
-		return nil
-	}
-
-	f, err := os.OpenFile(r.lockPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0)
-	if err != nil {
-		return errors.Wrap(err, "failed to open index file")
-	}
-	defer func() {
-		if err0 := f.Close(); err0 != nil {
-			err = multierr.Append(err, errors.Wrap(err0, "failed to close index file"))
-		}
-	}()
-
-	err = r.write(f, m)
 	return err
 }
 
