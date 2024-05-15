@@ -16,6 +16,7 @@ const (
 	BadRequest    ErrorType = "bad_request"
 	InternalError ErrorType = "internal_error"
 	NotFound      ErrorType = "not_found"
+	Unauthorized  ErrorType = "unauthorized"
 )
 
 // Defines values for MediaFormat.
@@ -89,6 +90,11 @@ type ProtoMedia struct {
 // ProtoMedia_Meta defines model for ProtoMedia.Meta.
 type ProtoMedia_Meta struct {
 	union json.RawMessage
+}
+
+// PostRepoParams defines parameters for PostRepo.
+type PostRepoParams struct {
+	XNeroKey *string `json:"X-Nero-Key,omitempty"`
 }
 
 // PostRepoJSONRequestBody defines body for PostRepo for application/json ContentType.

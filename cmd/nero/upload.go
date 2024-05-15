@@ -75,10 +75,12 @@ func (ac *appContext) handleUpload(cCtx *cli.Context, m *v1.ProtoMedia_Meta) err
 		return errors.Wrap(err, "failed to close data stream")
 	}
 
-	res, err := c.PostRepoWithResponse(cCtx.Context, cCtx.String("repo"), v1.ProtoMedia{
-		Data: base64.StdEncoding.EncodeToString(b),
-		Meta: m,
-	})
+	res, err := c.PostRepoWithResponse(
+		cCtx.Context,
+		cCtx.String("repo"),
+		&v1.PostRepoParams{XNeroKey: api.MakeOptString(cCtx.String("key"))},
+		v1.ProtoMedia{Data: base64.StdEncoding.EncodeToString(b), Meta: m},
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to send request")
 	}

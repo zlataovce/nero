@@ -18,7 +18,7 @@ import (
 type ServerInterface interface {
 
 	// (POST /repos/{repo})
-	PostRepo(w http.ResponseWriter, r *http.Request, repo string)
+	PostRepo(w http.ResponseWriter, r *http.Request, repo string, params PostRepoParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -26,7 +26,7 @@ type ServerInterface interface {
 type Unimplemented struct{}
 
 // (POST /repos/{repo})
-func (_ Unimplemented) PostRepo(w http.ResponseWriter, r *http.Request, repo string) {
+func (_ Unimplemented) PostRepo(w http.ResponseWriter, r *http.Request, repo string, params PostRepoParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -54,8 +54,32 @@ func (siw *ServerInterfaceWrapper) PostRepo(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostRepoParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "X-Nero-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Nero-Key")]; found {
+		var XNeroKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Nero-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Nero-Key", valueList[0], &XNeroKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Nero-Key", Err: err})
+			return
+		}
+
+		params.XNeroKey = &XNeroKey
+
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostRepo(w, r, repo)
+		siw.Handler.PostRepo(w, r, repo, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -186,8 +210,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 }
 
 type PostRepoRequestObject struct {
-	Repo string `json:"repo"`
-	Body *PostRepoJSONRequestBody
+	Repo   string `json:"repo"`
+	Params PostRepoParams
+	Body   *PostRepoJSONRequestBody
 }
 
 type PostRepoResponseObject interface {
@@ -208,6 +233,15 @@ type PostRepo400JSONResponse Error
 func (response PostRepo400JSONResponse) VisitPostRepoResponse(w http.ResponseWriter, _ *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostRepo401JSONResponse Error
+
+func (response PostRepo401JSONResponse) VisitPostRepoResponse(w http.ResponseWriter, _ *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -248,10 +282,11 @@ type strictHandler struct {
 }
 
 // PostRepo operation middleware
-func (sh *strictHandler) PostRepo(w http.ResponseWriter, r *http.Request, repo string) {
+func (sh *strictHandler) PostRepo(w http.ResponseWriter, r *http.Request, repo string, params PostRepoParams) {
 	var request PostRepoRequestObject
 
 	request.Repo = repo
+	request.Params = params
 
 	var body PostRepoJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {

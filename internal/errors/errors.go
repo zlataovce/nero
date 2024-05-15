@@ -14,3 +14,9 @@ func New(text string) error {
 func Is(err, target error) bool {
 	return errors.Is(err, target)
 }
+
+// As redirects to the errors.As method.
+func As(err error, target any) bool {
+	//goland:noinspection GoErrorsAs
+	return errors.As(err, target)
+}

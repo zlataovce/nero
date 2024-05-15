@@ -3,7 +3,9 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/cephxdev/nero/internal/errors"
 	"github.com/cephxdev/nero/repo"
+	"github.com/cephxdev/nero/server/api"
 	"github.com/cephxdev/nero/server/api/v1"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
@@ -26,9 +28,24 @@ var (
 
 	DefaultResponseErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
 
-		e := v1.Error{Type: v1.InternalError, Description: err.Error()}
+		var (
+			status = http.StatusInternalServerError
+			type_  = v1.InternalError
+
+			httpErr *api.HTTPError
+		)
+		if errors.As(err, &httpErr) {
+			status = httpErr.Status
+
+			if httpErr.Type != "" {
+				type_ = v1.ErrorType(httpErr.Type)
+			}
+		}
+
+		w.WriteHeader(status)
+
+		e := v1.Error{Type: type_, Description: err.Error()}
 		if err := json.NewEncoder(w).Encode(e); err != nil {
 			_, _ = fmt.Fprintf(w, "{\"type\":\"%s\",\"description\":\"%s\"}", v1.InternalError, "failed to serialize error")
 		}

@@ -17,9 +17,28 @@ import (
 	"sync"
 )
 
+const (
+	// AuthKey is an authentication key metadata key.
+	AuthKey = "auth_key"
+)
+
+// Metadata is repository metadata.
+type Metadata map[string]string
+
+// Value looks up a metadata value by key, returns false if the lookup failed.
+func (m Metadata) Value(key string) (string, bool) {
+	if m == nil {
+		return "", false
+	}
+
+	v, ok := m[key]
+	return v, ok
+}
+
 // Repository is a media repository.
 type Repository struct {
 	id, path, lockPath string
+	meta               Metadata
 	logger             *zap.Logger
 
 	items map[uuid.UUID]*media.Media
@@ -27,16 +46,17 @@ type Repository struct {
 }
 
 // NewMemory creates a Repository without a backing lock file and storage directory.
-func NewMemory(id string, logger *zap.Logger) *Repository {
+func NewMemory(id string, meta Metadata, logger *zap.Logger) *Repository {
 	return &Repository{
 		id:     id,
+		meta:   meta,
 		logger: logger,
 	}
 }
 
 // NewFile creates a Repository persisted to a lock file.
 // If lockPath exists, its content is loaded into the repository.
-func NewFile(id, path, lockPath string, logger *zap.Logger) (*Repository, error) {
+func NewFile(id, path, lockPath string, meta Metadata, logger *zap.Logger) (*Repository, error) {
 	var err error
 
 	if !filepath.IsAbs(path) {
@@ -115,6 +135,7 @@ func NewFile(id, path, lockPath string, logger *zap.Logger) (*Repository, error)
 		id:       id,
 		path:     path,
 		lockPath: lockPath,
+		meta:     meta,
 		logger:   logger,
 		items:    items,
 	}, err
@@ -140,6 +161,11 @@ func (r *Repository) LockPath() string {
 // Memory returns whether this repository is only in memory (without a backing lock file).
 func (r *Repository) Memory() bool {
 	return r.lockPath == ""
+}
+
+// Meta returns the repository metadata, may be nil.
+func (r *Repository) Meta() Metadata {
+	return r.meta
 }
 
 // Get tries to find media by its ID, returns nil if nothing was found.

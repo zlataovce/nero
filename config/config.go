@@ -84,6 +84,8 @@ type Repo struct {
 	Path string `toml:"path"`
 	// LockPath is the relative or absolute path of the repository's lock file.
 	LockPath string `toml:"lock_path"`
+	// Meta is the repository metadata.
+	Meta map[string]string `toml:"meta"`
 }
 
 // Defaults completes the configuration with default values.

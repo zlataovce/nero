@@ -3,16 +3,27 @@ package v1
 import (
 	"context"
 	"encoding/base64"
+	"github.com/cephxdev/nero/internal/errors"
+	"github.com/cephxdev/nero/repo"
 	"github.com/cephxdev/nero/repo/media"
 	"github.com/cephxdev/nero/repo/media/meta"
 	"github.com/cephxdev/nero/server/api"
 	"github.com/cephxdev/nero/server/api/v1"
+	"net/http"
 )
 
 func (s *Server) PostRepo(_ context.Context, request v1.PostRepoRequestObject) (v1.PostRepoResponseObject, error) {
 	r, ok := s.repos[request.Repo]
 	if !ok {
 		return v1.PostRepo400JSONResponse(v1.Error{Type: v1.NotFound, Description: "unknown repository"}), nil
+	}
+
+	if !checkKey(r, api.MakeString(request.Params.XNeroKey)) {
+		return nil, &api.HTTPError{
+			Err:    errors.New("wrong or missing key"),
+			Status: http.StatusUnauthorized,
+			Type:   string(v1.Unauthorized),
+		}
 	}
 
 	var m meta.Metadata
@@ -97,4 +108,11 @@ func wrapMetadata(v meta.Metadata) interface{} {
 	}
 
 	return nil
+}
+
+func checkKey(r *repo.Repository, key string) bool {
+	if expectedKey, ok := r.Meta().Value(repo.AuthKey); ok {
+		return key == expectedKey
+	}
+	return true // no required key, no authentication needed
 }

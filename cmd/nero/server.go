@@ -52,7 +52,7 @@ func (ac *appContext) handleServer(cCtx *cli.Context) (err error) {
 			return fmt.Errorf("duplicate repository ID %s, path %s", repoId, repoConfig.Path)
 		}
 
-		r, err := repo.NewFile(repoId, repoConfig.Path, repoConfig.LockPath, ac.logger)
+		r, err := repo.NewFile(repoId, repoConfig.Path, repoConfig.LockPath, repoConfig.Meta, ac.logger)
 		if err != nil {
 			return errors.Wrap(err, "failed to create repository")
 		}

@@ -4,5 +4,8 @@ host = ":8000"
 [http.nekos]
 host = ":8001"
 
-[repos.hug]
-path = "./hug"
+[repos.pat]
+path = "./pat"
+
+[repos.pat.meta]
+auth_key = "testing-key"

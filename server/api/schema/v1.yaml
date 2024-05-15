@@ -20,6 +20,10 @@ paths:
           required: true
           schema:
             type: string
+        - in: header
+          name: X-Nero-Key
+          schema:
+            type: string
       operationId: postRepo
       requestBody:
         content:
@@ -39,6 +43,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        '401':
+          description: Wrong or missing key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
@@ -48,6 +58,7 @@ components:
         - not_found
         - internal_error
         - bad_request
+        - unauthorized
     Error:
       type: object
       required:

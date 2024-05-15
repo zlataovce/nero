@@ -90,13 +90,13 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 	// PostRepoWithBody request with any body
-	PostRepoWithBody(ctx context.Context, repo string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostRepoWithBody(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	PostRepo(ctx context.Context, repo string, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	PostRepo(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) PostRepoWithBody(ctx context.Context, repo string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostRepoRequestWithBody(c.Server, repo, contentType, body)
+func (c *Client) PostRepoWithBody(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostRepoRequestWithBody(c.Server, repo, params, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +107,8 @@ func (c *Client) PostRepoWithBody(ctx context.Context, repo string, contentType 
 	return c.Client.Do(req)
 }
 
-func (c *Client) PostRepo(ctx context.Context, repo string, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostRepoRequest(c.Server, repo, body)
+func (c *Client) PostRepo(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostRepoRequest(c.Server, repo, params, body)
 	if err != nil {
 		return nil, err
 	}
@@ -120,18 +120,18 @@ func (c *Client) PostRepo(ctx context.Context, repo string, body PostRepoJSONReq
 }
 
 // NewPostRepoRequest calls the generic PostRepo builder with application/json body
-func NewPostRepoRequest(server string, repo string, body PostRepoJSONRequestBody) (*http.Request, error) {
+func NewPostRepoRequest(server string, repo string, params *PostRepoParams, body PostRepoJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewPostRepoRequestWithBody(server, repo, "application/json", bodyReader)
+	return NewPostRepoRequestWithBody(server, repo, params, "application/json", bodyReader)
 }
 
 // NewPostRepoRequestWithBody generates requests for PostRepo with any type of body
-func NewPostRepoRequestWithBody(server string, repo string, contentType string, body io.Reader) (*http.Request, error) {
+func NewPostRepoRequestWithBody(server string, repo string, params *PostRepoParams, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -162,6 +162,21 @@ func NewPostRepoRequestWithBody(server string, repo string, contentType string, 
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	if params != nil {
+
+		if params.XNeroKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-Nero-Key", runtime.ParamLocationHeader, *params.XNeroKey)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-Nero-Key", headerParam0)
+		}
+
+	}
 
 	return req, nil
 }
@@ -210,9 +225,9 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 	// PostRepoWithBodyWithResponse request with any body
-	PostRepoWithBodyWithResponse(ctx context.Context, repo string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRepoResponse, error)
+	PostRepoWithBodyWithResponse(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRepoResponse, error)
 
-	PostRepoWithResponse(ctx context.Context, repo string, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRepoResponse, error)
+	PostRepoWithResponse(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRepoResponse, error)
 }
 
 type PostRepoResponse struct {
@@ -220,6 +235,7 @@ type PostRepoResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *Media
 	JSON400      *Error
+	JSON401      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -239,16 +255,16 @@ func (r PostRepoResponse) StatusCode() int {
 }
 
 // PostRepoWithBodyWithResponse request with arbitrary body returning *PostRepoResponse
-func (c *ClientWithResponses) PostRepoWithBodyWithResponse(ctx context.Context, repo string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRepoResponse, error) {
-	rsp, err := c.PostRepoWithBody(ctx, repo, contentType, body, reqEditors...)
+func (c *ClientWithResponses) PostRepoWithBodyWithResponse(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRepoResponse, error) {
+	rsp, err := c.PostRepoWithBody(ctx, repo, params, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParsePostRepoResponse(rsp)
 }
 
-func (c *ClientWithResponses) PostRepoWithResponse(ctx context.Context, repo string, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRepoResponse, error) {
-	rsp, err := c.PostRepo(ctx, repo, body, reqEditors...)
+func (c *ClientWithResponses) PostRepoWithResponse(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRepoResponse, error) {
+	rsp, err := c.PostRepo(ctx, repo, params, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -282,6 +298,13 @@ func ParsePostRepoResponse(rsp *http.Response) (*PostRepoResponse, error) {
 			return nil, err
 		}
 		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	}
 

@@ -54,6 +54,11 @@ func main() {
 						Usage:    "the uploaded file path or remote url",
 						Required: true,
 					},
+					&cli.StringFlag{
+						Name:    "key",
+						Aliases: []string{"k"},
+						Usage:   "the repo authentication key",
+					},
 				},
 				Subcommands: []*cli.Command{
 					{
