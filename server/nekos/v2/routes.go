@@ -67,7 +67,7 @@ func (s *Server) Search(_ context.Context, request v2.SearchRequestObject) (v2.S
 		}
 	}
 
-	return &filesRes{items: res}, nil
+	return &filesRes{server: s, items: res}, nil
 }
 
 func (s *Server) GetCategoryFiles(_ context.Context, request v2.GetCategoryFilesRequestObject) (v2.GetCategoryFilesResponseObject, error) {
@@ -84,7 +84,7 @@ func (s *Server) GetCategoryFiles(_ context.Context, request v2.GetCategoryFiles
 		num = 20
 	}
 
-	return &filesRes{items: r.Random(num)}, nil
+	return &filesRes{server: s, items: r.Random(num)}, nil
 }
 
 func (s *Server) GetCategoryFile(_ context.Context, request v2.GetCategoryFileRequestObject) (v2.GetCategoryFileResponseObject, error) {
@@ -104,6 +104,28 @@ func (s *Server) GetCategoryFile(_ context.Context, request v2.GetCategoryFileRe
 	}
 
 	return &fileRes{path: m.Path}, nil
+}
+
+func (s *Server) makeRequestUrl(r *http.Request) *url.URL {
+	u := &(*r.URL) // copy URL
+	u.Fragment = ""
+	u.RawQuery = ""
+
+	if !u.IsAbs() { // try to make url absolute
+		if s.baseURL != nil {
+			u.Host = s.baseURL.Host
+			u.Scheme = s.baseURL.Scheme
+		} else {
+			u.Host = r.Host
+			u.Scheme = "http"
+
+			if r.TLS != nil {
+				u.Scheme = "https"
+			}
+		}
+	}
+
+	return u
 }
 
 type fileRes struct {
@@ -133,14 +155,15 @@ func (fr *fileRes) VisitGetCategoryFileResponse(w http.ResponseWriter, r *http.R
 }
 
 type filesRes struct {
-	items []*media.Media
+	server *Server
+	items  []*media.Media
 }
 
 func (fr *filesRes) VisitSearchResponse(w http.ResponseWriter, r *http.Request) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	u := cleanRequestUrl(r)
+	u := fr.server.makeRequestUrl(r)
 	return json.NewEncoder(w).Encode(v2.Search200JSONResponse{Results: wrapResults(u, fr.items)})
 }
 
@@ -148,7 +171,7 @@ func (fr *filesRes) VisitGetCategoryFilesResponse(w http.ResponseWriter, r *http
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
-	u := cleanRequestUrl(r)
+	u := fr.server.makeRequestUrl(r)
 	return json.NewEncoder(w).Encode(v2.GetCategoryFiles200JSONResponse{Results: wrapResults(u, fr.items)})
 }
 
@@ -162,7 +185,7 @@ func wrapResults(base *url.URL, ms []*media.Media) []v2.Result {
 }
 
 func wrapResult(base *url.URL, m *media.Media) v2.Result {
-	res := v2.Result{Url: base.JoinPath(filepath.Base(m.Path)).String()}
+	res := v2.Result{Url: base.JoinPath(m.ID.String() + filepath.Ext(m.Path)).String()}
 
 	switch data := m.Meta.(type) {
 	case *meta.GenericMetadata:
@@ -174,21 +197,4 @@ func wrapResult(base *url.URL, m *media.Media) v2.Result {
 	}
 
 	return res
-}
-
-func cleanRequestUrl(r *http.Request) *url.URL {
-	u := &(*r.URL) // copy URL
-	u.Fragment = ""
-	u.RawQuery = ""
-
-	if !u.IsAbs() { // try to make url absolute
-		u.Host = r.Host
-		u.Scheme = "http"
-
-		if r.TLS != nil {
-			u.Scheme = "https"
-		}
-	}
-
-	return u
 }

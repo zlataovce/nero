@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/cors"
 	"go.uber.org/zap"
 	"net/http"
+	"net/url"
 )
 
 var corsOpts = cors.Options{
@@ -42,8 +43,8 @@ func NewNeroRouter(repos []*repo.Repository, logger *zap.Logger) (http.Handler, 
 }
 
 // NewNekosRouter creates a new nekos API router.
-func NewNekosRouter(repos []*repo.Repository, logger *zap.Logger) (http.Handler, error) {
-	srv, err := v2.NewServer(repos, logger)
+func NewNekosRouter(repos []*repo.Repository, baseURL *url.URL, logger *zap.Logger) (http.Handler, error) {
+	srv, err := v2.NewServer(repos, baseURL, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create nekos v2 api handler")
 	}

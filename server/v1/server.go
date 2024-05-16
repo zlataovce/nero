@@ -12,11 +12,8 @@ import (
 	"net/http"
 )
 
-// ErrorHandler handles translating errors to HTTP responses.
-type ErrorHandler func(w http.ResponseWriter, r *http.Request, err error)
-
 var (
-	DefaultRequestErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	DefaultRequestErrorHandler api.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 
@@ -26,7 +23,7 @@ var (
 		}
 	}
 
-	DefaultResponseErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	DefaultResponseErrorHandler api.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("Content-Type", "application/json")
 
 		var (

@@ -1,5 +1,10 @@
 package api
 
+import "net/http"
+
+// ErrorHandler handles translating errors to HTTP responses.
+type ErrorHandler func(w http.ResponseWriter, r *http.Request, err error)
+
 // HTTPError is an error wrapper carrying an HTTP status code.
 type HTTPError struct {
 	// Err is the wrapped error.

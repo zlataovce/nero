@@ -33,9 +33,9 @@ func (c *Config) Defaults() *Config {
 // HTTP is an HTTP configuration section of the configuration file.
 type HTTP struct {
 	// Nero is the nero API configuration section.
-	Nero *HTTPNero `toml:"nero"`
+	Nero *HTTPServer `toml:"nero"`
 	// Nekos is the nekos API configuration section.
-	Nekos *HTTPNekos `toml:"nekos"`
+	Nekos *HTTPServer `toml:"nekos"`
 }
 
 // Defaults completes the section with default values.
@@ -46,36 +46,22 @@ func (h *HTTP) Defaults() *HTTP {
 	return h
 }
 
-// HTTPNero is a nero HTTP API configuration section of the configuration file.
-type HTTPNero struct {
+// HTTPServer is a server-dependent HTTP API configuration section of the configuration file.
+type HTTPServer struct {
 	// Host is the host string, used for http.ListenAndServe.
 	Host string `toml:"host"`
+	// BaseURL is the base URL of the server, guessed if empty.
+	BaseURL string `toml:"base_url"`
 }
 
 // Defaults completes the section with default values.
-func (hn *HTTPNero) Defaults() *HTTPNero {
-	return hn
+func (hs *HTTPServer) Defaults() *HTTPServer {
+	return hs
 }
 
 // Enabled returns whether a host was specified.
-func (hn *HTTPNero) Enabled() bool {
-	return hn.Host != ""
-}
-
-// HTTPNekos is a nekos HTTP API configuration section of the configuration file.
-type HTTPNekos struct {
-	// Host is the host string, used for http.ListenAndServe.
-	Host string `toml:"host"`
-}
-
-// Defaults completes the section with default values.
-func (hn *HTTPNekos) Defaults() *HTTPNekos {
-	return hn
-}
-
-// Enabled returns whether a host was specified.
-func (hn *HTTPNekos) Enabled() bool {
-	return hn.Host != ""
+func (hs *HTTPServer) Enabled() bool {
+	return hs.Host != ""
 }
 
 // Repo is a base repository configuration.

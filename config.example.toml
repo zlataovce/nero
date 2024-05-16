@@ -3,6 +3,7 @@ host = ":8000"
 
 [http.nekos]
 host = ":8001"
+base_url = "http://nero.cephx.dev"
 
 [repos.pat]
 path = "./pat"

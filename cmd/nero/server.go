@@ -12,6 +12,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 )
@@ -89,7 +90,14 @@ func (ac *appContext) handleServer(cCtx *cli.Context) (err error) {
 		httpSrv.add(&http.Server{Addr: cfg.HTTP.Nero.Host, Handler: handler})
 	}
 	if cfg.HTTP.Nekos.Enabled() {
-		handler, err := server.NewNekosRouter(repos, ac.logger)
+		var baseURL *url.URL
+		if cfg.HTTP.Nekos.BaseURL != "" {
+			if baseURL, err = url.Parse(cfg.HTTP.Nekos.BaseURL); err != nil {
+				return errors.Wrap(err, "failed to parse nekos api base url")
+			}
+		}
+
+		handler, err := server.NewNekosRouter(repos, baseURL, ac.logger)
 		if err != nil {
 			return errors.Wrap(err, "failed to create nekos api router")
 		}

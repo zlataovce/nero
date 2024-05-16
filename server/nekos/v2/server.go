@@ -4,17 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/cephxdev/nero/repo"
+	"github.com/cephxdev/nero/server/api"
 	"github.com/cephxdev/nero/server/api/nekos/v2"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 	"net/http"
+	"net/url"
 )
 
-// ErrorHandler handles translating errors to HTTP responses.
-type ErrorHandler func(w http.ResponseWriter, r *http.Request, err error)
-
 var (
-	DefaultRequestErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	DefaultRequestErrorHandler api.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 
@@ -24,7 +23,7 @@ var (
 		}
 	}
 
-	DefaultResponseErrorHandler ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+	DefaultResponseErrorHandler api.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 
@@ -37,12 +36,13 @@ var (
 
 // Server is a REST server for the nekos v2 API.
 type Server struct {
-	repos  map[string]*repo.Repository
-	logger *zap.Logger
+	repos   map[string]*repo.Repository
+	baseURL *url.URL
+	logger  *zap.Logger
 }
 
 // NewServer creates a new server with pre-defined repositories.
-func NewServer(repos []*repo.Repository, logger *zap.Logger) (*Server, error) {
+func NewServer(repos []*repo.Repository, baseURL *url.URL, logger *zap.Logger) (*Server, error) {
 	reposById := make(map[string]*repo.Repository, len(repos))
 	for _, r := range repos {
 		repoId := r.ID()
@@ -54,8 +54,9 @@ func NewServer(repos []*repo.Repository, logger *zap.Logger) (*Server, error) {
 	}
 
 	return &Server{
-		repos:  reposById,
-		logger: logger,
+		repos:   reposById,
+		baseURL: baseURL,
+		logger:  logger,
 	}, nil
 }
 
@@ -72,4 +73,9 @@ func NewRouter(handler v2.StrictServerInterface) http.Handler {
 // Repos returns all repositories available to the server.
 func (s *Server) Repos() []*repo.Repository {
 	return maps.Values(s.repos)
+}
+
+// BaseURL returns the base URL of the server.
+func (s *Server) BaseURL() *url.URL {
+	return s.baseURL
 }
