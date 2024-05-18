@@ -33,8 +33,8 @@ func main() {
 				Action: appCtx.handleServer,
 			},
 			{
-				Name:  "upload",
-				Usage: "upload commands",
+				Name:  "client",
+				Usage: "client commands",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "url",
@@ -45,13 +45,7 @@ func main() {
 					&cli.StringFlag{
 						Name:     "repo",
 						Aliases:  []string{"r"},
-						Usage:    "the upload destination",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:     "path",
-						Aliases:  []string{"f"},
-						Usage:    "the uploaded file path or remote url",
+						Usage:    "the target repo",
 						Required: true,
 					},
 					&cli.StringFlag{
@@ -62,34 +56,61 @@ func main() {
 				},
 				Subcommands: []*cli.Command{
 					{
-						Name:  "generic",
-						Usage: "upload a file with generic metadata",
+						Name:  "upload",
+						Usage: "upload commands",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
-								Name:  "source",
-								Usage: "the source",
-							},
-							&cli.StringFlag{
-								Name:  "artist",
-								Usage: "the artist",
-							},
-							&cli.StringFlag{
-								Name:  "artist-link",
-								Usage: "a link to the artist",
+								Name:     "path",
+								Aliases:  []string{"f"},
+								Usage:    "the uploaded file path or remote url",
+								Required: true,
 							},
 						},
-						Action: appCtx.handleUploadGeneric,
+						Subcommands: []*cli.Command{
+							{
+								Name:  "generic",
+								Usage: "upload a file with generic metadata",
+								Flags: []cli.Flag{
+									&cli.StringFlag{
+										Name:  "source",
+										Usage: "the source",
+									},
+									&cli.StringFlag{
+										Name:  "artist",
+										Usage: "the artist",
+									},
+									&cli.StringFlag{
+										Name:  "artist-link",
+										Usage: "a link to the artist",
+									},
+								},
+								Action: appCtx.handleUploadGeneric,
+							},
+							{
+								Name:  "anime",
+								Usage: "upload a file with anime metadata",
+								Flags: []cli.Flag{
+									&cli.StringFlag{
+										Name:  "name",
+										Usage: "the anime name",
+									},
+								},
+								Action: appCtx.handleUploadAnime,
+							},
+						},
 					},
 					{
-						Name:  "anime",
-						Usage: "upload a file with anime metadata",
+						Name:  "delete",
+						Usage: "deletes media",
 						Flags: []cli.Flag{
 							&cli.StringFlag{
-								Name:  "name",
-								Usage: "the anime name",
+								Name:     "id",
+								Aliases:  []string{"i"},
+								Usage:    "the media id to be deleted",
+								Required: true,
 							},
 						},
-						Action: appCtx.handleUploadAnime,
+						Action: appCtx.handleDelete,
 					},
 				},
 			},

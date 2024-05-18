@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // ServerInterface represents all server handlers.
@@ -19,6 +20,9 @@ type ServerInterface interface {
 
 	// (POST /repos/{repo})
 	PostRepo(w http.ResponseWriter, r *http.Request, repo string, params PostRepoParams)
+
+	// (DELETE /repos/{repo}/{id})
+	DeleteRepoId(w http.ResponseWriter, r *http.Request, repo string, id openapi_types.UUID, params DeleteRepoIdParams)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -27,6 +31,11 @@ type Unimplemented struct{}
 
 // (POST /repos/{repo})
 func (_ Unimplemented) PostRepo(w http.ResponseWriter, r *http.Request, repo string, params PostRepoParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (DELETE /repos/{repo}/{id})
+func (_ Unimplemented) DeleteRepoId(w http.ResponseWriter, r *http.Request, repo string, id openapi_types.UUID, params DeleteRepoIdParams) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -80,6 +89,65 @@ func (siw *ServerInterfaceWrapper) PostRepo(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostRepo(w, r, repo, params)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// DeleteRepoId operation middleware
+func (siw *ServerInterfaceWrapper) DeleteRepoId(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "repo" -------------
+	var repo string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "repo", chi.URLParam(r, "repo"), &repo, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "repo", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DeleteRepoIdParams
+
+	headers := r.Header
+
+	// ------------- Optional header parameter "X-Nero-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Nero-Key")]; found {
+		var XNeroKey string
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandlerFunc(w, r, &TooManyValuesForParamError{ParamName: "X-Nero-Key", Count: n})
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Nero-Key", valueList[0], &XNeroKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "X-Nero-Key", Err: err})
+			return
+		}
+
+		params.XNeroKey = &XNeroKey
+
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteRepoId(w, r, repo, id, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -205,6 +273,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/repos/{repo}", wrapper.PostRepo)
 	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/repos/{repo}/{id}", wrapper.DeleteRepoId)
+	})
 
 	return r
 }
@@ -246,11 +317,51 @@ func (response PostRepo401JSONResponse) VisitPostRepoResponse(w http.ResponseWri
 	return json.NewEncoder(w).Encode(response)
 }
 
+type DeleteRepoIdRequestObject struct {
+	Repo   string             `json:"repo"`
+	Id     openapi_types.UUID `json:"id"`
+	Params DeleteRepoIdParams
+}
+
+type DeleteRepoIdResponseObject interface {
+	VisitDeleteRepoIdResponse(w http.ResponseWriter, r *http.Request) error
+}
+
+type DeleteRepoId200JSONResponse Media
+
+func (response DeleteRepoId200JSONResponse) VisitDeleteRepoIdResponse(w http.ResponseWriter, _ *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteRepoId400JSONResponse Error
+
+func (response DeleteRepoId400JSONResponse) VisitDeleteRepoIdResponse(w http.ResponseWriter, _ *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteRepoId401JSONResponse Error
+
+func (response DeleteRepoId401JSONResponse) VisitDeleteRepoIdResponse(w http.ResponseWriter, _ *http.Request) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
 	// (POST /repos/{repo})
 	PostRepo(ctx context.Context, request PostRepoRequestObject) (PostRepoResponseObject, error)
+
+	// (DELETE /repos/{repo}/{id})
+	DeleteRepoId(ctx context.Context, request DeleteRepoIdRequestObject) (DeleteRepoIdResponseObject, error)
 }
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
 type StrictMiddlewareFunc = strictnethttp.StrictHTTPMiddlewareFunc
@@ -308,6 +419,34 @@ func (sh *strictHandler) PostRepo(w http.ResponseWriter, r *http.Request, repo s
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PostRepoResponseObject); ok {
 		if err := validResponse.VisitPostRepoResponse(w, r); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteRepoId operation middleware
+func (sh *strictHandler) DeleteRepoId(w http.ResponseWriter, r *http.Request, repo string, id openapi_types.UUID, params DeleteRepoIdParams) {
+	var request DeleteRepoIdRequestObject
+
+	request.Repo = repo
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteRepoId(ctx, request.(DeleteRepoIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteRepoId")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteRepoIdResponseObject); ok {
+		if err := validResponse.VisitDeleteRepoIdResponse(w, r); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

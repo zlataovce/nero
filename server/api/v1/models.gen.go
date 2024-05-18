@@ -97,6 +97,11 @@ type PostRepoParams struct {
 	XNeroKey *string `json:"X-Nero-Key,omitempty"`
 }
 
+// DeleteRepoIdParams defines parameters for DeleteRepoId.
+type DeleteRepoIdParams struct {
+	XNeroKey *string `json:"X-Nero-Key,omitempty"`
+}
+
 // PostRepoJSONRequestBody defines body for PostRepo for application/json ContentType.
 type PostRepoJSONRequestBody = ProtoMedia
 

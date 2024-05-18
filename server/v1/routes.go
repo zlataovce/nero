@@ -12,6 +12,14 @@ import (
 	"net/http"
 )
 
+var (
+	unauthorizedError = &api.HTTPError{
+		Err:    errors.New("wrong or missing key"),
+		Status: http.StatusUnauthorized,
+		Type:   string(v1.Unauthorized),
+	}
+)
+
 func (s *Server) PostRepo(_ context.Context, request v1.PostRepoRequestObject) (v1.PostRepoResponseObject, error) {
 	r, ok := s.repos[request.Repo]
 	if !ok {
@@ -19,11 +27,7 @@ func (s *Server) PostRepo(_ context.Context, request v1.PostRepoRequestObject) (
 	}
 
 	if !checkKey(r, api.MakeString(request.Params.XNeroKey)) {
-		return nil, &api.HTTPError{
-			Err:    errors.New("wrong or missing key"),
-			Status: http.StatusUnauthorized,
-			Type:   string(v1.Unauthorized),
-		}
+		return nil, unauthorizedError
 	}
 
 	var m meta.Metadata
@@ -46,23 +50,62 @@ func (s *Server) PostRepo(_ context.Context, request v1.PostRepoRequestObject) (
 		return nil, err
 	}
 
-	m1 := &v1.Media_Meta{}
-	switch v := wrapMetadata(m0.Meta).(type) {
-	case v1.GenericMetadata:
-		err = m1.FromGenericMetadata(v)
-	case v1.AnimeMetadata:
-		err = m1.FromAnimeMetadata(v)
-	}
-
+	m1, err := wrapMedia(m0)
 	if err != nil {
 		return nil, err
 	}
 
-	return v1.PostRepo200JSONResponse(v1.Media{
-		Format: wrapFormat(m0.Format),
-		Id:     m0.ID,
-		Meta:   m1,
-	}), nil
+	return v1.PostRepo200JSONResponse(m1), nil
+}
+
+func (s *Server) DeleteRepoId(_ context.Context, request v1.DeleteRepoIdRequestObject) (v1.DeleteRepoIdResponseObject, error) {
+	r, ok := s.repos[request.Repo]
+	if !ok {
+		return v1.DeleteRepoId400JSONResponse(v1.Error{Type: v1.NotFound, Description: "unknown repository"}), nil
+	}
+
+	if !checkKey(r, api.MakeString(request.Params.XNeroKey)) {
+		return nil, unauthorizedError
+	}
+
+	m := r.Get(request.Id)
+	if m == nil {
+		return v1.DeleteRepoId400JSONResponse(v1.Error{Type: v1.NotFound, Description: "unknown item id"}), nil
+	}
+
+	if err := r.Remove(request.Id); err != nil {
+		return nil, err
+	}
+
+	m0, err := wrapMedia(m)
+	if err != nil {
+		return nil, err
+	}
+
+	return v1.DeleteRepoId200JSONResponse(m0), nil
+}
+
+func wrapMedia(m *media.Media) (v1.Media, error) {
+	var (
+		m0  = &v1.Media_Meta{}
+		err error
+	)
+	switch v := wrapMetadata(m.Meta).(type) {
+	case v1.GenericMetadata:
+		err = m0.FromGenericMetadata(v)
+	case v1.AnimeMetadata:
+		err = m0.FromAnimeMetadata(v)
+	}
+
+	if err != nil {
+		return v1.Media{}, err
+	}
+
+	return v1.Media{
+		Format: wrapFormat(m.Format),
+		Id:     m.ID,
+		Meta:   m0,
+	}, nil
 }
 
 func wrapFormat(f media.Format) v1.MediaFormat {

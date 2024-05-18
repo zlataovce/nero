@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/oapi-codegen/runtime"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -93,6 +94,9 @@ type ClientInterface interface {
 	PostRepoWithBody(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostRepo(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// DeleteRepoId request
+	DeleteRepoId(ctx context.Context, repo string, id openapi_types.UUID, params *DeleteRepoIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) PostRepoWithBody(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -109,6 +113,18 @@ func (c *Client) PostRepoWithBody(ctx context.Context, repo string, params *Post
 
 func (c *Client) PostRepo(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostRepoRequest(c.Server, repo, params, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) DeleteRepoId(ctx context.Context, repo string, id openapi_types.UUID, params *DeleteRepoIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewDeleteRepoIdRequest(c.Server, repo, id, params)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +197,62 @@ func NewPostRepoRequestWithBody(server string, repo string, params *PostRepoPara
 	return req, nil
 }
 
+// NewDeleteRepoIdRequest generates requests for DeleteRepoId
+func NewDeleteRepoIdRequest(server string, repo string, id openapi_types.UUID, params *DeleteRepoIdParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "repo", runtime.ParamLocationPath, repo)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/repos/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+
+		if params.XNeroKey != nil {
+			var headerParam0 string
+
+			headerParam0, err = runtime.StyleParamWithLocation("simple", false, "X-Nero-Key", runtime.ParamLocationHeader, *params.XNeroKey)
+			if err != nil {
+				return nil, err
+			}
+
+			req.Header.Set("X-Nero-Key", headerParam0)
+		}
+
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -228,6 +300,9 @@ type ClientWithResponsesInterface interface {
 	PostRepoWithBodyWithResponse(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRepoResponse, error)
 
 	PostRepoWithResponse(ctx context.Context, repo string, params *PostRepoParams, body PostRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*PostRepoResponse, error)
+
+	// DeleteRepoIdWithResponse request
+	DeleteRepoIdWithResponse(ctx context.Context, repo string, id openapi_types.UUID, params *DeleteRepoIdParams, reqEditors ...RequestEditorFn) (*DeleteRepoIdResponse, error)
 }
 
 type PostRepoResponse struct {
@@ -254,6 +329,30 @@ func (r PostRepoResponse) StatusCode() int {
 	return 0
 }
 
+type DeleteRepoIdResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Media
+	JSON400      *Error
+	JSON401      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r DeleteRepoIdResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r DeleteRepoIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // PostRepoWithBodyWithResponse request with arbitrary body returning *PostRepoResponse
 func (c *ClientWithResponses) PostRepoWithBodyWithResponse(ctx context.Context, repo string, params *PostRepoParams, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostRepoResponse, error) {
 	rsp, err := c.PostRepoWithBody(ctx, repo, params, contentType, body, reqEditors...)
@@ -271,6 +370,15 @@ func (c *ClientWithResponses) PostRepoWithResponse(ctx context.Context, repo str
 	return ParsePostRepoResponse(rsp)
 }
 
+// DeleteRepoIdWithResponse request returning *DeleteRepoIdResponse
+func (c *ClientWithResponses) DeleteRepoIdWithResponse(ctx context.Context, repo string, id openapi_types.UUID, params *DeleteRepoIdParams, reqEditors ...RequestEditorFn) (*DeleteRepoIdResponse, error) {
+	rsp, err := c.DeleteRepoId(ctx, repo, id, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseDeleteRepoIdResponse(rsp)
+}
+
 // ParsePostRepoResponse parses an HTTP response from a PostRepoWithResponse call
 func ParsePostRepoResponse(rsp *http.Response) (*PostRepoResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -280,6 +388,46 @@ func ParsePostRepoResponse(rsp *http.Response) (*PostRepoResponse, error) {
 	}
 
 	response := &PostRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Media
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseDeleteRepoIdResponse parses an HTTP response from a DeleteRepoIdWithResponse call
+func ParseDeleteRepoIdResponse(rsp *http.Response) (*DeleteRepoIdResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &DeleteRepoIdResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
