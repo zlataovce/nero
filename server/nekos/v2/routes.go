@@ -10,7 +10,6 @@ import (
 	"github.com/cephxdev/nero/server/api/nekos/v2"
 	"github.com/google/uuid"
 	"go.uber.org/multierr"
-	"mime"
 	"net/http"
 	"net/url"
 	"os"
@@ -103,7 +102,7 @@ func (s *Server) GetCategoryFile(_ context.Context, request v2.GetCategoryFileRe
 		return v2.GetCategoryFile404JSONResponse(v2.Error{Code: http.StatusNotFound, Message: "file not found"}), nil
 	}
 
-	return &fileRes{path: m.Path}, nil
+	return &fileRes{item: m}, nil
 }
 
 func (s *Server) makeRequestUrl(r *http.Request) *url.URL {
@@ -129,11 +128,11 @@ func (s *Server) makeRequestUrl(r *http.Request) *url.URL {
 }
 
 type fileRes struct {
-	path string
+	item *media.Media
 }
 
 func (fr *fileRes) VisitGetCategoryFileResponse(w http.ResponseWriter, r *http.Request) error {
-	f, err := os.Open(fr.path)
+	f, err := os.Open(fr.item.Path)
 	if err != nil {
 		return errors.Wrap(err, "failed to open media")
 	}
@@ -148,7 +147,7 @@ func (fr *fileRes) VisitGetCategoryFileResponse(w http.ResponseWriter, r *http.R
 		return errors.Wrap(err, "failed to stat media")
 	}
 
-	w.Header().Set("Content-Type", mime.TypeByExtension(fr.path))
+	writeHeaderMeta(w.Header(), fr.item.Meta)
 
 	http.ServeContent(w, r, fi.Name(), fi.ModTime(), f)
 	return err
@@ -197,4 +196,16 @@ func wrapResult(base *url.URL, m *media.Media) v2.Result {
 	}
 
 	return res
+}
+
+func writeHeaderMeta(h http.Header, m meta.Metadata) {
+	// can't use Header.Add, because that canonicalizes the header name
+	switch data := m.(type) {
+	case *meta.GenericMetadata:
+		h["artist_href"] = []string{url.QueryEscape(data.ArtistLink)}
+		h["artist_name"] = []string{url.QueryEscape(data.Artist)}
+		h["source_url"] = []string{url.QueryEscape(data.Source)}
+	case *meta.AnimeMetadata:
+		h["anime_name"] = []string{url.QueryEscape(data.Name)}
+	}
 }

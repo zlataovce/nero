@@ -448,7 +448,6 @@ type GetCategoryFile200ResponseHeaders struct {
 	ArtistHref string
 	ArtistName string
 	SourceUrl  string
-	Url        string
 }
 
 type GetCategoryFile200SchemaResponse struct {
@@ -466,7 +465,6 @@ func (response GetCategoryFile200SchemaResponse) VisitGetCategoryFileResponse(w 
 	w.Header().Set("artist_href", fmt.Sprint(response.Headers.ArtistHref))
 	w.Header().Set("artist_name", fmt.Sprint(response.Headers.ArtistName))
 	w.Header().Set("source_url", fmt.Sprint(response.Headers.SourceUrl))
-	w.Header().Set("url", fmt.Sprint(response.Headers.Url))
 	w.WriteHeader(200)
 
 	if closer, ok := response.Body.(io.ReadCloser); ok {

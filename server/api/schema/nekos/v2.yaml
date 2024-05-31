@@ -158,9 +158,6 @@ paths:
             anime_name:
               schema:
                 type: string
-            url:
-              schema:
-                type: string
           content:
             schema:
               type: string
