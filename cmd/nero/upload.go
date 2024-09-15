@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/cephxdev/nero/internal/errors"
-	"github.com/cephxdev/nero/server/api"
-	"github.com/cephxdev/nero/server/api/v1"
+	"github.com/zlataovce/nero/internal/errors"
+	"github.com/zlataovce/nero/server/api"
+	"github.com/zlataovce/nero/server/api/v1"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"io"

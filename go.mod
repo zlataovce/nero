@@ -1,4 +1,4 @@
-module github.com/cephxdev/nero
+module github.com/zlataovce/nero
 
 go 1.21
 

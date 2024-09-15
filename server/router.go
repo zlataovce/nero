@@ -1,10 +1,10 @@
 package server
 
 import (
-	"github.com/cephxdev/nero/internal/errors"
-	"github.com/cephxdev/nero/repo"
-	"github.com/cephxdev/nero/server/nekos/v2"
-	"github.com/cephxdev/nero/server/v1"
+	"github.com/zlataovce/nero/internal/errors"
+	"github.com/zlataovce/nero/repo"
+	"github.com/zlataovce/nero/server/nekos/v2"
+	"github.com/zlataovce/nero/server/v1"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"

@@ -3,9 +3,9 @@ package repo
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/cephxdev/nero/internal/errors"
-	"github.com/cephxdev/nero/repo/media"
-	"github.com/cephxdev/nero/repo/media/meta"
+	"github.com/zlataovce/nero/internal/errors"
+	"github.com/zlataovce/nero/repo/media"
+	"github.com/zlataovce/nero/repo/media/meta"
 	mime "github.com/gabriel-vasile/mimetype"
 	"github.com/google/uuid"
 	"go.uber.org/multierr"

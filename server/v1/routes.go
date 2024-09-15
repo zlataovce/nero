@@ -3,12 +3,12 @@ package v1
 import (
 	"context"
 	"encoding/base64"
-	"github.com/cephxdev/nero/internal/errors"
-	"github.com/cephxdev/nero/repo"
-	"github.com/cephxdev/nero/repo/media"
-	"github.com/cephxdev/nero/repo/media/meta"
-	"github.com/cephxdev/nero/server/api"
-	"github.com/cephxdev/nero/server/api/v1"
+	"github.com/zlataovce/nero/internal/errors"
+	"github.com/zlataovce/nero/repo"
+	"github.com/zlataovce/nero/repo/media"
+	"github.com/zlataovce/nero/repo/media/meta"
+	"github.com/zlataovce/nero/server/api"
+	"github.com/zlataovce/nero/server/api/v1"
 	"net/http"
 )
 

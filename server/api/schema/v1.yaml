@@ -5,7 +5,7 @@ info:
   description: Specification for the nero API
   version: 1.0.0
   contact:
-    url: https://github.com/cephxdev/nero
+    url: https://github.com/zlataovce/nero
     email: mk@kcra.me
 
 servers:

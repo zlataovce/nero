@@ -3,9 +3,9 @@ package v2
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cephxdev/nero/repo"
-	"github.com/cephxdev/nero/server/api"
-	"github.com/cephxdev/nero/server/api/nekos/v2"
+	"github.com/zlataovce/nero/repo"
+	"github.com/zlataovce/nero/server/api"
+	"github.com/zlataovce/nero/server/api/nekos/v2"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 	"net/http"

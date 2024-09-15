@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/cephxdev/nero/internal/errors"
-	"github.com/cephxdev/nero/server/api"
-	v1 "github.com/cephxdev/nero/server/api/v1"
+	"github.com/zlataovce/nero/internal/errors"
+	"github.com/zlataovce/nero/server/api"
+	v1 "github.com/zlataovce/nero/server/api/v1"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"

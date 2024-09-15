@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/cephxdev/nero"
-	"github.com/cephxdev/nero/internal/errors"
+	"github.com/zlataovce/nero"
+	"github.com/zlataovce/nero/internal/errors"
 	"github.com/urfave/cli/v2"
 	"go.uber.org/zap"
 	"os"

@@ -3,7 +3,7 @@ package media
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/cephxdev/nero/repo/media/meta"
+	"github.com/zlataovce/nero/repo/media/meta"
 	"github.com/google/uuid"
 )
 
